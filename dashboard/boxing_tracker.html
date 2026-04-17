@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoxTrack — Move Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0f2f7;
+    --muted: #7a8099;
+    --jab: #3b8de0;
+    --jab-glow: rgba(59,141,224,0.18);
+    --hook: #e05c3b;
+    --hook-glow: rgba(224,92,59,0.18);
+    --upper: #3bc48a;
+    --upper-glow: rgba(59,196,138,0.18);
+    --accent: #f0f2f7;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--jab);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-icon svg { width: 16px; height: 16px; }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .status-pill.connected .status-dot { background: var(--upper); box-shadow: 0 0 6px var(--upper); }
+  .status-pill.connected { color: var(--upper); border-color: rgba(59,196,138,0.3); }
+  .status-pill.error .status-dot { background: var(--hook); }
+  .status-pill.error { color: var(--hook); border-color: rgba(224,92,59,0.3); }
+
+  /* ── Connect bar ── */
+  .connect-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .connect-bar label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+  .connect-bar input {
+    flex: 1;
+    max-width: 320px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 8px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .connect-bar input:focus { border-color: var(--jab); }
+
+  .btn {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-connect {
+    background: var(--jab);
+    color: #fff;
+  }
+  .btn-disconnect {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-reset {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    margin-left: auto;
+  }
+  .btn-reset:hover { color: var(--hook); border-color: var(--hook); }
+
+  /* ── Main grid ── */
+  .main { padding: 28px 32px; }
+
+  /* ── Move display ── */
+  .move-display {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    min-height: 160px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, background 0.3s;
+  }
+
+  .move-display::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+
+  .move-display.jab { border-color: var(--jab); }
+  .move-display.jab::before { background: var(--jab-glow); opacity: 1; }
+  .move-display.hook { border-color: var(--hook); }
+  .move-display.hook::before { background: var(--hook-glow); opacity: 1; }
+  .move-display.uppercut { border-color: var(--upper); }
+  .move-display.uppercut::before { background: var(--upper-glow); opacity: 1; }
+
+  .move-icon-wrap {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.3s;
+    position: relative;
+    z-index: 1;
+  }
+
+  .move-display.jab .move-icon-wrap { background: rgba(59,141,224,0.15); }
+  .move-display.hook .move-icon-wrap { background: rgba(224,92,59,0.15); }
+  .move-display.uppercut .move-icon-wrap { background: rgba(59,196,138,0.15); }
+
+  .move-icon-wrap svg { width: 44px; height: 44px; }
+
+  .move-info { flex: 1; position: relative; z-index: 1; }
+
+  .move-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .move-display.jab .move-label { color: var(--jab); }
+  .move-display.hook .move-label { color: var(--hook); }
+  .move-display.uppercut .move-label { color: var(--upper); }
+
+  .move-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 400;
+  }
+
+  .move-confidence {
+    position: relative; z-index: 1;
+    text-align: right;
+  }
+
+  .conf-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 36px;
+    font-weight: 600;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .move-display.jab .conf-value { color: var(--jab); }
+  .move-display.hook .conf-value { color: var(--hook); }
+  .move-display.uppercut .conf-value { color: var(--upper); }
+
+  .conf-label { font-size: 12px; color: var(--muted); }
+
+  /* ── Counters ── */
+  .counters {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .counter-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    transition: border-color 0.3s, transform 0.15s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .counter-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .counter-card.jab::after { background: var(--jab); }
+  .counter-card.hook::after { background: var(--hook); }
+  .counter-card.uppercut::after { background: var(--upper); }
+
+  .counter-card.flash {
+    transform: scale(1.02);
+    border-color: transparent;
+  }
+
+  .counter-card.jab.flash { background: var(--jab-glow); border-color: var(--jab); }
+  .counter-card.hook.flash { background: var(--hook-glow); border-color: var(--hook); }
+  .counter-card.uppercut.flash { background: var(--upper-glow); border-color: var(--upper); }
+
+  .counter-name {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .counter-card.jab .counter-name { color: var(--jab); }
+  .counter-card.hook .counter-name { color: var(--hook); }
+  .counter-card.uppercut .counter-name { color: var(--upper); }
+
+  .counter-number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 56px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .counter-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Bottom row ── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ── Bar chart ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .bar-label {
+    font-size: 13px;
+    font-weight: 500;
+    width: 80px;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .bar-fill.jab { background: var(--jab); }
+  .bar-fill.hook { background: var(--hook); }
+  .bar-fill.uppercut { background: var(--upper); }
+
+  .bar-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* ── Log ── */
+  .log-list {
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface2) transparent;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .log-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .log-dot.jab { background: var(--jab); }
+  .log-dot.hook { background: var(--hook); }
+  .log-dot.uppercut { background: var(--upper); }
+
+  .log-move { font-weight: 500; flex: 1; }
+  .log-time { color: var(--muted); font-size: 12px; }
+  .log-conf { color: var(--muted); font-size: 12px; width: 38px; text-align: right; }
+
+  /* ── Idle state ── */
+  .idle-msg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--muted);
+    gap: 10px;
+    font-size: 14px;
+  }
+
+  /* ── Demo banner ── */
+  .demo-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 32px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .demo-bar button {
+    padding: 4px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .demo-bar button:hover { border-color: var(--jab); color: var(--jab); }
+
+  @media (max-width: 700px) {
+    header, .connect-bar, .main, .demo-bar { padding-left: 16px; padding-right: 16px; }
+    .counters { grid-template-columns: 1fr; }
+    .bottom-row { grid-template-columns: 1fr; }
+    .move-label { font-size: 36px; }
+    .counter-number { font-size: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 8 L8 3 L13 8 L8 13 Z" fill="white" opacity="0.9"/>
+      </svg>
+    </div>
+    BoxTrack
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot"></div>
+    <span id="statusText">Disconnected</span>
+  </div>
+</header>
+
+<div class="demo-bar">
+  <span>No ESP32 yet?</span>
+  <button onclick="demoFire()">Simulate a move</button>
+  <button onclick="demoAuto()">Auto demo (5 moves)</button>
+</div>
+
+<div class="connect-bar">
+  <label for="wsUrl">ESP32 WebSocket IP</label>
+  <input type="text" id="wsUrl" placeholder="ws://192.168.1.100:81" value="ws://192.168.1.100:81"/>
+  <button class="btn btn-connect" onclick="connect()">Connect</button>
+  <button class="btn btn-disconnect" onclick="disconnect()">Disconnect</button>
+  <button class="btn btn-reset" onclick="resetCounts()">Reset counts</button>
+</div>
+
+<div class="main">
+
+  <!-- Last move display -->
+  <div class="move-display" id="moveDisplay">
+    <div class="move-icon-wrap" id="moveIcon">
+      <!-- icon rendered by JS -->
+      <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" id="iconSvg">
+        <circle cx="22" cy="22" r="18" stroke="#4a5068" stroke-width="2"/>
+        <path d="M15 22 H29 M24 16 L30 22 L24 28" stroke="#4a5068" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="move-info">
+      <div class="move-label" id="moveLabel">Waiting...</div>
+      <div class="move-sub" id="moveSub">Put on your glove and throw a punch</div>
+    </div>
+    <div class="move-confidence" id="moveConf" style="display:none;">
+      <div class="conf-value" id="confValue">—</div>
+      <div class="conf-label">confidence</div>
+    </div>
+  </div>
+
+  <!-- Counters -->
+  <div class="counters">
+    <div class="counter-card jab">
+      <div class="counter-name">Jab</div>
+      <div class="counter-number" id="jabCount">0</div>
+      <div class="counter-desc">Straight quick punch</div>
+    </div>
+    <div class="counter-card hook">
+      <div class="counter-name">Side Hook</div>
+      <div class="counter-number" id="hookCount">0</div>
+      <div class="counter-desc">Lateral swing</div>
+    </div>
+    <div class="counter-card uppercut">
+      <div class="counter-name">Uppercut</div>
+      <div class="counter-number" id="upperCount">0</div>
+      <div class="counter-desc">Rising upward punch</div>
+    </div>
+  </div>
+
+  <!-- Bottom row -->
+  <div class="bottom-row">
+
+    <!-- Distribution chart -->
+    <div class="card">
+      <div class="card-title">Punch distribution</div>
+      <div class="bar-row">
+        <span class="bar-label" style="color:var(--jab)">Jab</span>
+        <div class="bar-track"><div class="bar-fill jab" id="barJab"></div></div>
+        <span class="bar-count" id="barJabPct">0%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label" style="color:var(--hook)">Side hook</span>
+        <div class="bar-track"><div class="bar-fill hook" id="barHook"></div></div>
+        <span class="bar-count" id="barHookPct">0%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label" style="color:var(--upper)">Uppercut</span>
+        <div class="bar-track"><div class="bar-fill uppercut" id="barUpper"></div></div>
+        <span class="bar-count" id="barUpperPct">0%</span>
+      </div>
+      <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; color:var(--muted);">Total punches</span>
+        <span style="font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:600;" id="totalCount">0</span>
+      </div>
+    </div>
+
+    <!-- Move log -->
+    <div class="card">
+      <div class="card-title">Move log</div>
+      <ul class="log-list" id="logList">
+        <li class="idle-msg">No moves detected yet</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ICONS = {
+  jab: `<svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 22 H32" stroke="#3b8de0" stroke-width="3" stroke-linecap="round"/>
+    <path d="M26 14 L34 22 L26 30" stroke="#3b8de0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="10" cy="22" r="5" fill="#3b8de0" opacity="0.2"/>
+    <circle cx="10" cy="22" r="3" fill="#3b8de0"/>
+  </svg>`,
+  hook: `<svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 12 C10 12 34 12 34 22 C34 32 10 32 10 32" stroke="#e05c3b" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M26 24 L34 32 L26 32" stroke="#e05c3b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="12" cy="22" r="4" fill="#e05c3b" opacity="0.2"/>
+    <circle cx="12" cy="22" r="2.5" fill="#e05c3b"/>
+  </svg>`,
+  uppercut: `<svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22 36 L22 10" stroke="#3bc48a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M14 18 L22 10 L30 18" stroke="#3bc48a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="22" cy="34" r="5" fill="#3bc48a" opacity="0.2"/>
+    <circle cx="22" cy="34" r="3" fill="#3bc48a"/>
+  </svg>`,
+  idle: `<svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="22" cy="22" r="18" stroke="#4a5068" stroke-width="2"/>
+    <path d="M15 22 H29 M24 16 L30 22 L24 28" stroke="#4a5068" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`
+};
+
+const LABELS = { jab: 'JAB', hook: 'SIDE HOOK', uppercut: 'UPPERCUT' };
+const SUBS = { jab: 'Quick straight punch detected', hook: 'Lateral swing detected', uppercut: 'Rising punch detected' };
+const COLORS = { jab: 'var(--jab)', hook: 'var(--hook)', uppercut: 'var(--upper)' };
+
+let counts = { jab: 0, hook: 0, uppercut: 0 };
+let ws = null;
+let demoTimer = null;
+
+function setStatus(state, text) {
+  const pill = document.getElementById('statusPill');
+  const st = document.getElementById('statusText');
+  pill.className = 'status-pill ' + state;
+  st.textContent = text;
+}
+
+function connect() {
+  const url = document.getElementById('wsUrl').value.trim();
+  if (!url) return;
+  disconnect();
+  setStatus('', 'Connecting...');
+  try {
+    ws = new WebSocket(url);
+    ws.onopen = () => setStatus('connected', 'Connected');
+    ws.onclose = () => setStatus('', 'Disconnected');
+    ws.onerror = () => setStatus('error', 'Connection failed');
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleMove(data.label || data.move || data.prediction, data.confidence || null);
+      } catch {
+        // plain string fallback: "jab", "hook", "uppercut", "rest"
+        handleMove(e.data.trim().toLowerCase(), null);
+      }
+    };
+  } catch(err) {
+    setStatus('error', 'Invalid URL');
+  }
+}
+
+function disconnect() {
+  if (ws) { ws.close(); ws = null; }
+}
+
+function handleMove(label, confidence) {
+  label = (label || '').toLowerCase().replace(/\s+/g,'');
+  if (!['jab','hook','uppercut','sidehook'].includes(label)) return;
+  if (label === 'sidehook') label = 'hook';
+
+  counts[label]++;
+  updateDisplay(label, confidence);
+  updateCounters();
+  updateBars();
+  addLog(label, confidence);
+  flashCard(label);
+}
+
+function updateDisplay(label, confidence) {
+  const display = document.getElementById('moveDisplay');
+  const lbl = document.getElementById('moveLabel');
+  const sub = document.getElementById('moveSub');
+  const iconWrap = document.getElementById('moveIcon');
+  const confWrap = document.getElementById('moveConf');
+  const confVal = document.getElementById('confValue');
+
+  display.className = 'move-display ' + label;
+  lbl.textContent = LABELS[label];
+  sub.textContent = SUBS[label];
+  iconWrap.innerHTML = ICONS[label];
+
+  if (confidence !== null && confidence !== undefined) {
+    const pct = Math.round(parseFloat(confidence) * (parseFloat(confidence) <= 1 ? 100 : 1));
+    confVal.textContent = pct + '%';
+    confWrap.style.display = 'block';
+  } else {
+    confWrap.style.display = 'none';
+  }
+
+  // pulse animation
+  display.style.transition = 'none';
+  display.style.transform = 'scale(1.01)';
+  setTimeout(() => { display.style.transition = ''; display.style.transform = ''; }, 180);
+}
+
+function updateCounters() {
+  document.getElementById('jabCount').textContent = counts.jab;
+  document.getElementById('hookCount').textContent = counts.hook;
+  document.getElementById('upperCount').textContent = counts.uppercut;
+}
+
+function updateBars() {
+  const total = counts.jab + counts.hook + counts.uppercut;
+  const pct = (n) => total === 0 ? 0 : Math.round((n / total) * 100);
+  document.getElementById('barJab').style.width = pct(counts.jab) + '%';
+  document.getElementById('barHook').style.width = pct(counts.hook) + '%';
+  document.getElementById('barUpper').style.width = pct(counts.uppercut) + '%';
+  document.getElementById('barJabPct').textContent = pct(counts.jab) + '%';
+  document.getElementById('barHookPct').textContent = pct(counts.hook) + '%';
+  document.getElementById('barUpperPct').textContent = pct(counts.uppercut) + '%';
+  document.getElementById('totalCount').textContent = total;
+}
+
+function addLog(label, confidence) {
+  const list = document.getElementById('logList');
+  const idle = list.querySelector('.idle-msg');
+  if (idle) idle.remove();
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const conf = confidence !== null && confidence !== undefined
+    ? Math.round(parseFloat(confidence) * (parseFloat(confidence) <= 1 ? 100 : 1)) + '%'
+    : '—';
+
+  const li = document.createElement('li');
+  li.className = 'log-item';
+  li.innerHTML = `
+    <div class="log-dot ${label}"></div>
+    <span class="log-move">${LABELS[label]}</span>
+    <span class="log-conf">${conf}</span>
+    <span class="log-time">${timeStr}</span>
+  `;
+  list.prepend(li);
+  if (list.children.length > 50) list.lastChild.remove();
+}
+
+function flashCard(label) {
+  const map = { jab: 0, hook: 1, uppercut: 2 };
+  const cards = document.querySelectorAll('.counter-card');
+  const card = cards[map[label]];
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 320);
+}
+
+function resetCounts() {
+  counts = { jab: 0, hook: 0, uppercut: 0 };
+  updateCounters();
+  updateBars();
+  document.getElementById('logList').innerHTML = '<li class="idle-msg">No moves detected yet</li>';
+  const display = document.getElementById('moveDisplay');
+  display.className = 'move-display';
+  document.getElementById('moveLabel').textContent = 'Waiting...';
+  document.getElementById('moveSub').textContent = 'Put on your glove and throw a punch';
+  document.getElementById('moveIcon').innerHTML = ICONS.idle;
+  document.getElementById('moveConf').style.display = 'none';
+}
+
+// Demo
+const DEMO_MOVES = ['jab','hook','uppercut','jab','jab','uppercut','hook'];
+let demoIdx = 0;
+
+function demoFire() {
+  const move = DEMO_MOVES[demoIdx++ % DEMO_MOVES.length];
+  handleMove(move, (0.75 + Math.random() * 0.23).toFixed(2));
+}
+
+function demoAuto() {
+  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; return; }
+  let count = 0;
+  demoTimer = setInterval(() => {
+    demoFire();
+    if (++count >= 5) { clearInterval(demoTimer); demoTimer = null; }
+  }, 900);
+}
+</script>
+</body>
+</html>
