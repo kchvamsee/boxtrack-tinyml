@@ -45,3 +45,6 @@ Data Collection → Feature Extraction → Model Training → Embedded Deploymen
 - Expand dataset for more gestures
 - Improve model robustness
 - Add mobile visualization interface
+
+## Notes
+Project developed as part of academic coursework with hands-on implementation and testing.
