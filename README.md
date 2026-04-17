@@ -1,4 +1,4 @@
-# BoxTrack – TinyML Boxing Move Detection
+<img width="732" height="464" alt="image" src="https://github.com/user-attachments/assets/ba4e7a8b-ee59-4bbc-b7a8-e612e768689f" /># BoxTrack – TinyML Boxing Move Detection
 
 ## Overview
 A real-time motion classification system using ESP32-S3 and MPU-6050 IMU to detect boxing moves using TinyML. The system performs on-device inference with low latency and provides real-time visualization.
@@ -21,6 +21,12 @@ Data Collection → Feature Extraction → Model Training → Embedded Deploymen
 
 ## Dataset
 Custom IMU dataset collected using MPU-6050 for punch classification (Jab, Hook, Uppercut, Rest).
+
+## System Workflow
+![Workflow](docs/sys_architecture.jped)
+
+## Circuit Diagram
+![Workflow](docs/circuit_diagram.jpeg)
 
 ## Results
 - ~94% validation accuracy
