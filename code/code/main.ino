@@ -21,8 +21,8 @@
 #include <Boxing_master_inferencing.h>        // your EI library
 
 // ── WiFi credentials ──
-const char* SSID     = "OPPO F25 Pro 5G";
-const char* PASSWORD = "7338855384";
+const char* SSID     = "<enter you ssid>";
+const char* PASSWORD = "<enter your password>";
 
 // ── WebSocket server on port 81 ──
 WebSocketsServer wsServer(81);
