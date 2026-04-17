@@ -1,5 +1,3 @@
-
-
 /*
   BoxTrack — ESP32-S3 WebSocket Server
   =====================================
