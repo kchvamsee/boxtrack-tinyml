@@ -16,11 +16,14 @@ A real-time motion classification system using ESP32-S3 and MPU-6050 IMU to dete
 ## Tech Stack
 ESP32-S3, Edge Impulse, TinyML, WebSockets
 
-## Pipeline
-Data Collection → Feature Extraction → Model Training → Embedded Deployment → Visualization
+## Dashboard
+A WebSocket-based dashboard was developed to visualize real-time classification results from the ESP32 device.
 
 ## Dataset
 Custom IMU dataset collected using MPU-6050 for punch classification (Jab, Hook, Uppercut, Rest).
+
+## Pipeline
+Data Collection → Feature Extraction → Model Training → Embedded Deployment → Visualization
 
 ## System Workflow
 ![Workflow](docs/sys_architecture.jpeg)
