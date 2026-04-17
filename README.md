@@ -19,6 +19,9 @@ ESP32-S3, Edge Impulse, TinyML, WebSockets
 ## Pipeline
 Data Collection → Feature Extraction → Model Training → Embedded Deployment → Visualization
 
+## Dataset
+Custom IMU dataset collected using MPU-6050 for punch classification (Jab, Hook, Uppercut, Rest).
+
 ## Results
 - ~94% validation accuracy
 - Real-time classification with low latency
